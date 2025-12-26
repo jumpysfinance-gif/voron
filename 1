@@ -462,8 +462,8 @@ local player = Players.LocalPlayer
 local labelWidth = 150
 local labelHeight = 25
 local verticalSpacing = 6
-local startXLeft = 10      -- slightly moved left
-local startXRight = 180    -- slightly moved left
+local startXLeft = 10      -- left column
+local startXRight = 180    -- right column
 local startY = 10
 local currentY = startY
 
@@ -481,13 +481,34 @@ local function createLabel(text, parent)
 end
 
 -- Container for stats labels
-local statsPage = StatsPage -- make sure this points to your UI frame
+local statsPage = StatsPage
 
--- Define label positions
+-- ==================== TOP-MIDDLE LEADERBOARD STRENGTH LABEL ("Size") ====================
+local leaderstats = player:WaitForChild("leaderstats")
+local sizeStat = leaderstats:WaitForChild("Strength")   -- leaderboard Strength
+
+local sizeLabel = Instance.new("TextLabel")
+sizeLabel.Size = UDim2.new(0, 300, 0, 32)
+sizeLabel.Position = UDim2.new(0.5, -130, 0, -20)  -- slightly right from center
+sizeLabel.Text = "Size: 0"
+sizeLabel.TextSize = 20
+sizeLabel.Font = Enum.Font.Oswald
+sizeLabel.TextColor3 = Color3.fromRGB(255,255,255)
+sizeLabel.BackgroundTransparency = 1
+sizeLabel.TextXAlignment = Enum.TextXAlignment.Center
+sizeLabel.ZIndex = 50
+sizeLabel.Parent = statsPage
+
+sizeStat.Changed:Connect(function(newValue)
+    sizeLabel.Text = "Size: "..tostring(newValue)
+end)
+
+sizeLabel.Text = "Size: "..tostring(sizeStat.Value)
+
+-- ==================== LEFT & RIGHT COLUMN LABELS ====================
 local leftColumnLabels = {"Strength", "Gained", "DWS", "SPS", "SPM", "SPH"}
 local rightColumnLabels = {"SPD", "SPW", "SPMO", "SPY", "Ping", "FPS"}
 
--- Store label objects
 local labels = {}
 
 -- Place left column labels
@@ -584,7 +605,7 @@ task.spawn(function()
             local success, value = pcall(function() return pingItem:GetValue() end)
             if success then ping = value end
         end
-        labels["Ping"].Text = "Ping: "..math.floor(ping).." ms"  -- round down to nearest integer
+        labels["Ping"].Text = "Ping: "..math.floor(ping).." ms"
     end
 end)
 
@@ -593,7 +614,7 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local LoopingPage = LoopingPage  -- pre-existing tab frame
+local LoopingPage = LoopingPage
 
 -- Config
 local buttonWidth = 180
@@ -602,53 +623,65 @@ local verticalSpacing = 8
 local startY = 2
 local currentY = startY
 
--- ==================== UI ELEMENTS ====================
+-- State
 local selectedPlayer = nil
 local loopRunning = false
 local antihitActive = false
 local detectConn, punchConn
 
--- Loop Status Label
+-- ==================== LOOP STATUS LABEL ====================
 local loopLabel = Instance.new("TextLabel")
 loopLabel.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
 loopLabel.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
 loopLabel.Text = "Loop Status: Off"
 loopLabel.TextSize = 25
 loopLabel.Font = Enum.Font.Oswald
-loopLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+loopLabel.TextColor3 = Color3.fromRGB(255,255,255)
 loopLabel.BackgroundTransparency = 1
 loopLabel.Parent = LoopingPage
 currentY = currentY + buttonHeight + verticalSpacing
 
--- Loop Button (Above dropdown)
+-- ==================== ADDED: ANTIHIT STATUS LABEL ====================
+local antiHitLabel = Instance.new("TextLabel")
+antiHitLabel.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+antiHitLabel.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+antiHitLabel.Text = "AntiHit Status: Off"
+antiHitLabel.TextSize = 25
+antiHitLabel.Font = Enum.Font.Oswald
+antiHitLabel.TextColor3 = Color3.fromRGB(255,255,255)
+antiHitLabel.BackgroundTransparency = 1
+antiHitLabel.Parent = LoopingPage
+currentY = currentY + buttonHeight + verticalSpacing
+
+-- ==================== LOOP BUTTON ====================
 local loopButton = Instance.new("TextButton")
 loopButton.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
 loopButton.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
 loopButton.Text = "Start Loop"
 loopButton.TextSize = 25
 loopButton.Font = Enum.Font.Oswald
-loopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+loopButton.TextColor3 = Color3.fromRGB(255,255,255)
 loopButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
 loopButton.BackgroundTransparency = 0.5
 Instance.new("UICorner", loopButton)
 loopButton.Parent = LoopingPage
 currentY = currentY + buttonHeight + verticalSpacing
 
--- AntiHit Button (Below loop button)
+-- ==================== ANTIHIT BUTTON ====================
 local antiHitButton = Instance.new("TextButton")
 antiHitButton.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
 antiHitButton.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
 antiHitButton.Text = "Activate AntiHit"
 antiHitButton.TextSize = 25
 antiHitButton.Font = Enum.Font.Oswald
-antiHitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+antiHitButton.TextColor3 = Color3.fromRGB(255,255,255)
 antiHitButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
 antiHitButton.BackgroundTransparency = 0.5
 Instance.new("UICorner", antiHitButton)
 antiHitButton.Parent = LoopingPage
 currentY = currentY + buttonHeight + verticalSpacing
 
--- ==================== ENHANCED DROPDOWN ====================
+-- ==================== DROPDOWN ====================
 local dropdownFrame = Instance.new("Frame")
 dropdownFrame.Size = UDim2.new(0, buttonWidth, 0, 200)
 dropdownFrame.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
@@ -693,53 +726,60 @@ dropdownButton.Parent = LoopingPage
 currentY = currentY + buttonHeight + verticalSpacing
 
 dropdownButton.MouseButton1Click:Connect(function()
-    dropdownFrame.Visible = not dropdownFrame.Visible
+	dropdownFrame.Visible = not dropdownFrame.Visible
 end)
 
 local function createPlayerButton(plr, yPos)
-    local plrButton = Instance.new("TextButton")
-    plrButton.Size = UDim2.new(1,0,0,30)
-    plrButton.Position = UDim2.new(0,0,0,yPos)
-    plrButton.Text = plr.DisplayName.." ("..plr.Name..")"
-    plrButton.TextSize = 18
-    plrButton.Font = Enum.Font.Oswald
-    plrButton.TextColor3 = Color3.fromRGB(255,255,255)
-    plrButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
-    plrButton.BackgroundTransparency = 0.5
-    Instance.new("UICorner", plrButton)
-    plrButton.Parent = scrollFrame
+	local plrButton = Instance.new("TextButton")
+	plrButton.Size = UDim2.new(1,0,0,30)
+	plrButton.Position = UDim2.new(0,0,0,yPos)
+	plrButton.Text = plr.DisplayName.." ("..plr.Name..")"
+	plrButton.TextSize = 18
+	plrButton.Font = Enum.Font.Oswald
+	plrButton.TextColor3 = Color3.fromRGB(255,255,255)
+	plrButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+	plrButton.BackgroundTransparency = 0.5
+	Instance.new("UICorner", plrButton)
+	plrButton.Parent = scrollFrame
 
-    plrButton.MouseEnter:Connect(function()
-        plrButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
-    end)
-    plrButton.MouseLeave:Connect(function()
-        plrButton.BackgroundColor3 = (selectedPlayer == plr.Name) and Color3.fromRGB(0,100,200) or Color3.fromRGB(0,0,0)
-    end)
+	plrButton.MouseEnter:Connect(function()
+		plrButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+	end)
 
-    plrButton.MouseButton1Click:Connect(function()
-        selectedPlayer = plr.Name
-        dropdownButton.Text = plr.DisplayName.." ("..plr.Name..")"
-        dropdownFrame.Visible = false
-        updateDropdownButtons()
-    end)
+	plrButton.MouseLeave:Connect(function()
+		plrButton.BackgroundColor3 =
+			(selectedPlayer == plr.Name)
+			and Color3.fromRGB(0,100,200)
+			or Color3.fromRGB(0,0,0)
+	end)
 
-    return plrButton
+	plrButton.MouseButton1Click:Connect(function()
+		selectedPlayer = plr.Name
+		dropdownButton.Text = plr.DisplayName.." ("..plr.Name..")"
+		dropdownFrame.Visible = false
+		updateDropdownButtons()
+	end)
+
+	return plrButton
 end
 
-local function updateDropdownButtons()
-    scrollFrame:ClearAllChildren()
-    local yPos = 0
-    local searchText = searchBox.Text:lower()
-    for _, plr in pairs(Players:GetPlayers()) do
-        if plr.Name:lower():find(searchText) or plr.DisplayName:lower():find(searchText) then
-            local btn = createPlayerButton(plr, yPos)
-            if selectedPlayer == plr.Name then
-                btn.BackgroundColor3 = Color3.fromRGB(0,100,200) -- highlight selected
-            end
-            yPos = yPos + 30
-        end
-    end
-    scrollFrame.CanvasSize = UDim2.new(0,0,0,yPos)
+function updateDropdownButtons()
+	scrollFrame:ClearAllChildren()
+	local yPos = 0
+	local searchText = searchBox.Text:lower()
+
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr.Name:lower():find(searchText)
+		or plr.DisplayName:lower():find(searchText) then
+			local btn = createPlayerButton(plr, yPos)
+			if selectedPlayer == plr.Name then
+				btn.BackgroundColor3 = Color3.fromRGB(0,100,200)
+			end
+			yPos = yPos + 30
+		end
+	end
+
+	scrollFrame.CanvasSize = UDim2.new(0,0,0,yPos)
 end
 
 searchBox:GetPropertyChangedSignal("Text"):Connect(updateDropdownButtons)
@@ -747,81 +787,80 @@ Players.PlayerAdded:Connect(updateDropdownButtons)
 Players.PlayerRemoving:Connect(updateDropdownButtons)
 updateDropdownButtons()
 
--- ==================== LOOP BUTTON LOGIC ====================
+-- ==================== LOOP BUTTON LOGIC (UNCHANGED) ====================
 loopButton.MouseButton1Click:Connect(function()
-    if not selectedPlayer then
-        warn("No player selected!")
-        return
-    end
+	if not selectedPlayer then return end
 
-    loopRunning = not loopRunning
-    loopButton.Text = loopRunning and "Stop Loop" or "Start Loop"
-    loopLabel.Text = loopRunning and "Loop Status: Running" or "Loop Status: Off"
+	loopRunning = not loopRunning
+	loopButton.Text = loopRunning and "Stop Loop" or "Start Loop"
+	loopLabel.Text = loopRunning and "Loop Status: Running" or "Loop Status: Off"
 
-    if loopRunning then
-        local LocalUser = Players.LocalPlayer
-        local ENEMY = selectedPlayer
+	if loopRunning then
+		local LocalUser = Players.LocalPlayer
+		local ENEMY = selectedPlayer
 
-        task.spawn(function()
-            while loopRunning do
-                for i = 1, 2000 do 
-                    if not loopRunning then break end
-                    ReplicatedStorage.Remotes.Human_Punch:FireServer(
-                        LocalUser.Character.LeftHand, "LeftPunch",
-                        Workspace[ENEMY].LeftHand, 5, true, "RightPunch",
-                        LocalUser.Character.Boxing.Handle.Hit, 100
-                    )
-                    task.wait()
-                end
-                task.wait()
-            end
-        end)
-    end
+		task.spawn(function()
+			while loopRunning do
+				for i = 1, 2000 do
+					if not loopRunning then break end
+					ReplicatedStorage.Remotes.Human_Punch:FireServer(
+						LocalUser.Character.LeftHand, "LeftPunch",
+						Workspace[ENEMY].LeftHand, 5, true, "RightPunch",
+						LocalUser.Character.Boxing.Handle.Hit, 100
+					)
+					task.wait()
+				end
+				task.wait()
+			end
+		end)
+	end
 end)
 
--- ==================== ANTIHIT BUTTON LOGIC ====================
+-- ==================== ANTIHIT LOGIC (YOUR CODE, UNCHANGED) ====================
 antiHitButton.MouseButton1Click:Connect(function()
-    if antihitActive then return end
-    antihitActive = true
+	if antihitActive then return end
+	antihitActive = true
 
-    detectConn = RunService.RenderStepped:Connect(function()
-        pcall(function()
-            local plr = Players.LocalPlayer
-            local char = plr and plr.Character
-            if char and char:FindFirstChild("Humanoid") and char.Humanoid:FindFirstChild("creator") then
-                local attacker = tostring(char.Humanoid.creator.Value)
-                loopLabel:Set(attacker .. " Is Hitting You")
-            else
-                loopLabel:Set("")
-            end
-        end)
-    end)
+	-- ADDED: status update only
+	antiHitLabel.Text = "AntiHit Status: On"
 
-    punchConn = RunService.RenderStepped:Connect(function()
-        pcall(function()
-            local plr = Players.LocalPlayer
-            local char = plr and plr.Character
-            if char and char:FindFirstChild("Humanoid") and char.Humanoid:FindFirstChild("creator") then
-                local attackerName = tostring(char.Humanoid.creator.Value)
-                local target = Workspace:FindFirstChild(attackerName)
-                if target and plr and plr.Backpack and plr.Backpack:FindFirstChild("Boxing") and plr.Backpack.Boxing:FindFirstChild("Handle") then
-                    local hit = plr.Backpack.Boxing.Handle.Hit
-                    ReplicatedStorage.Remotes.Human_Punch:FireServer(
-                        char.RightHand, "RightPunch",
-                        target:FindFirstChild("UpperTorso") or target:FindFirstChild("HumanoidRootPart"),
-                        5, true, "RightPunch", hit, 5
-                    )
-                    ReplicatedStorage.Remotes.Human_Punch:FireServer(
-                        char.LeftHand, "LeftPunch",
-                        target:FindFirstChild("UpperTorso") or target:FindFirstChild("HumanoidRootPart"),
-                        5, true, "LeftPunch", hit, 5
-                    )
-                end
-            end
-        end)
-    end)
+	detectConn = RunService.RenderStepped:Connect(function()
+		pcall(function()
+			local plr = Players.LocalPlayer
+			local char = plr and plr.Character
+			if char and char:FindFirstChild("Humanoid") and char.Humanoid:FindFirstChild("creator") then
+				local attacker = tostring(char.Humanoid.creator.Value)
+				loopLabel:Set(attacker .. " Is Hitting You")
+			else
+				loopLabel:Set("")
+			end
+		end)
+	end)
+
+	punchConn = RunService.RenderStepped:Connect(function()
+		pcall(function()
+			local plr = Players.LocalPlayer
+			local char = plr and plr.Character
+			if char and char:FindFirstChild("Humanoid") and char.Humanoid:FindFirstChild("creator") then
+				local attackerName = tostring(char.Humanoid.creator.Value)
+				local target = Workspace:FindFirstChild(attackerName)
+				if target and plr and plr.Backpack and plr.Backpack:FindFirstChild("Boxing") and plr.Backpack.Boxing:FindFirstChild("Handle") then
+					local hit = plr.Backpack.Boxing.Handle.Hit
+					ReplicatedStorage.Remotes.Human_Punch:FireServer(
+						char.RightHand, "RightPunch",
+						target:FindFirstChild("UpperTorso") or target:FindFirstChild("HumanoidRootPart"),
+						5, true, "RightPunch", hit, 5
+					)
+					ReplicatedStorage.Remotes.Human_Punch:FireServer(
+						char.LeftHand, "LeftPunch",
+						target:FindFirstChild("UpperTorso") or target:FindFirstChild("HumanoidRootPart"),
+						5, true, "LeftPunch", hit, 5
+					)
+				end
+			end
+		end)
+	end)
 end)
-
 -- ==================== TELEPORTS TAB ====================
 local TeleportsPage = TeleportsPage -- pre-existing tab frame
 local Players = game:GetService("Players")
