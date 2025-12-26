@@ -1,0 +1,871 @@
+--[=[
+ d888b  db    db d888888b      .d888b.      db      db    db  .d8b.  
+88' Y8b 88    88   `88'        VP  `8D      88      88    88 d8' `8b 
+88      88    88    88            odD'      88      88    88 88ooo88 
+88  ooo 88    88    88          .88'        88      88    88 88~~~88 
+88. ~8~ 88b  d88   .88.        j88.         88booo. 88b  d88 88   88    @uniquadev
+ Y888P  ~Y8888P' Y888888P      888888D      Y88888P ~Y8888P' YP   YP  CONVERTER 
+]=]
+
+-- ==================== UI (UNCHANGED) ====================
+local G2L = {}
+
+G2L["1"] = Instance.new("ScreenGui", game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"))
+G2L["1"].ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+G2L["2"] = Instance.new("Frame", G2L["1"])
+G2L["2"].BorderSizePixel = 0
+G2L["2"].BackgroundColor3 = Color3.fromRGB(0,0,0)
+G2L["2"].Size = UDim2.new(0,427,0,247)
+G2L["2"].Position = UDim2.new(0.33281,0,0.30569,0)
+G2L["2"].BackgroundTransparency = 0.3
+
+Instance.new("UICorner", G2L["2"])
+
+G2L["4"] = Instance.new("TextLabel", G2L["2"])
+G2L["4"].Text = "Voron"
+G2L["4"].FontFace = Font.new("rbxasset://fonts/families/PatrickHand.json")
+G2L["4"].TextSize = 40
+G2L["4"].TextColor3 = Color3.new(1,1,1)
+G2L["4"].BackgroundTransparency = 1
+G2L["4"].Size = UDim2.new(0,154,0,50)
+G2L["4"].Position = UDim2.new(-0.07026,0,0,0)
+
+local function tabButton(text,posY)
+	local b = Instance.new("TextButton", G2L["2"])
+	b.Text = text
+	b.Size = UDim2.new(0,95,0,30)
+	b.Position = UDim2.new(0,0,posY,0)
+	b.TextSize = 25
+	b.BackgroundTransparency = 0.5
+	b.BackgroundColor3 = Color3.fromRGB(0,0,0)
+	b.TextColor3 = Color3.new(1,1,1)
+	b.FontFace = Font.new("rbxasset://fonts/families/Oswald.json")
+	Instance.new("UICorner", b)
+	return b
+end
+
+G2L["5"] = tabButton("Farming",0.23887)
+G2L["7"] = tabButton("Duping",0.38462)
+G2L["9"] = tabButton("Stats",0.53036)
+G2L["b"] = tabButton("Looping",0.67611)
+G2L["d"] = tabButton("Teleports",0.82186)
+
+-- ==================== PAGES (INVISIBLE HOLDERS) ====================
+local Pages = Instance.new("Frame", G2L["2"])
+Pages.Size = UDim2.new(0,320,0,200)
+Pages.Position = UDim2.new(0.25,0,0.15,0)
+Pages.BackgroundTransparency = 1
+
+local function page()
+	local f = Instance.new("Frame", Pages)
+	f.Size = UDim2.new(1,0,1,0)
+	f.Visible = false
+	f.BackgroundTransparency = 1
+	return f
+end
+
+local FarmPage      = page()
+local DupePage      = page()
+local StatsPage     = page()
+local LoopingPage   = page()
+local TeleportsPage = page()
+
+-- ==================== TAB LOGIC ====================
+local Tabs = {
+	[G2L["5"]] = FarmPage,
+	[G2L["7"]] = DupePage,
+	[G2L["9"]] = StatsPage,
+	[G2L["b"]] = LoopingPage,
+	[G2L["d"]] = TeleportsPage
+}
+
+local function switchTab(btn)
+	for b,p in pairs(Tabs) do
+		p.Visible = false
+		b.BackgroundTransparency = 0.5
+	end
+	Tabs[btn].Visible = true
+	btn.BackgroundTransparency = 0.2
+end
+
+for btn in pairs(Tabs) do
+	btn.MouseButton1Click:Connect(function()
+		switchTab(btn)
+	end)
+end
+
+switchTab(G2L["5"])
+
+-- ==================== DRAGGABLE ====================
+local UIS = game:GetService("UserInputService")
+local dragging, dragStart, startPos
+
+G2L["2"].InputBegan:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = i.Position
+		startPos = G2L["2"].Position
+	end
+end)
+
+UIS.InputChanged:Connect(function(i)
+	if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+		local delta = i.Position - dragStart
+		G2L["2"].Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+UIS.InputEnded:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = false
+	end
+end)
+
+-- ==================== F TO TOGGLE ====================
+local open = true
+UIS.InputBegan:Connect(function(i,gp)
+	if gp then return end
+	if i.KeyCode == Enum.KeyCode.F then
+		open = not open
+		G2L["1"].Enabled = open
+	end
+end)
+
+-- ==================== FARM TAB ====================
+local Lighting = game:GetService("Lighting")
+local VirtualUser = game:GetService("VirtualUser")
+local Stats = game:GetService("Stats")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Configuration
+local buttonWidth = 180
+local buttonHeight = 35
+local verticalSpacing = 8  -- small gap
+local startY = 2           -- moved up into the frame
+
+local currentY = startY
+
+-- Helper to create a button
+local function createButton(text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+    btn.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+    currentY = currentY + buttonHeight + verticalSpacing
+
+    btn.TextSize = 25
+    btn.Font = Enum.Font.Oswald
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    btn.BackgroundTransparency = 0.5
+    btn.Text = text
+    Instance.new("UICorner", btn)
+    btn.Parent = FarmPage
+
+    if callback then
+        btn.MouseButton1Click:Connect(callback)
+    end
+    return btn
+end
+
+-- ==================== FEATURES ====================
+
+-- Ping Farm button
+local farmLoop = false
+createButton("Ping Farm", function()
+    farmLoop = not farmLoop
+    task.spawn(function()
+        while farmLoop do
+            -- Safe ping getter
+            local function getPing()
+                local network = Stats:FindFirstChild("Network")
+                if not network then return 0 end
+                local serverStats = network:FindFirstChild("ServerStatsItem") or network:FindFirstChild("ServerStatsItem_")
+                if not serverStats then return 0 end
+                local pingItem = serverStats:FindFirstChild("Data Ping") or serverStats:FindFirstChild("Data Ping (ms)")
+                if not pingItem then return 0 end
+                local success, ping = pcall(function()
+                    return pingItem:GetValue()
+                end)
+                return success and ping or 0
+            end
+
+            local PING_STOP = 25000
+            local PING_RESUME = 1000
+
+            local ping = getPing()
+            if ping >= PING_STOP then
+                warn("High ping detected (" .. ping .. " ms). Pausing...")
+                repeat
+                    task.wait(2)
+                    ping = getPing()
+                until ping <= PING_RESUME
+                print("Ping recovered (" .. ping .. " ms). Resuming.")
+            end
+
+            if player.Character then
+                for _, v in pairs(player.Character:GetChildren()) do
+                    if v:IsA("Tool") and v.Name == "Double Weight" then
+                        v:Activate()
+                    end
+                end
+            end
+
+            task.wait(0.6)
+        end
+    end)
+end)
+
+-- Equip Loop button
+createButton("Equip Dws", function()
+    task.spawn(function()
+        while true do
+            for _, v in pairs(player.Backpack:GetChildren()) do
+                if v.Name == "Double Weight" then
+                    v.Parent = player.Character
+                end
+            end
+            task.wait(1)
+        end
+    end)
+end)
+
+-- FPS button
+createButton("FPS", function()
+    local hud = player.PlayerGui:FindFirstChild("HUD")
+    if hud then hud:Destroy() end
+
+    Lighting.FogStart = 0
+    Lighting.FogEnd = 1000000
+
+    local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+    if atmosphere then atmosphere:Destroy() end
+
+    local ReplicatedFirst = game:GetService("ReplicatedFirst")
+    local tourneyQ = ReplicatedFirst:FindFirstChild("TourneyQ")
+    if tourneyQ then
+        pcall(function() tourneyQ:Destroy() end)
+    end
+
+    player.Idled:Connect(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+    end)
+
+    print("HUD deleted + Fog removed + TourneyQ deleted + Anti-AFK enabled ✅")
+end)
+
+-- Day/Night button
+createButton("Toggle Day/Night", function()
+    if Lighting.ClockTime > 6 and Lighting.ClockTime < 18 then
+        Lighting.ClockTime = 5.5 -- Night
+    else
+        Lighting.ClockTime = 12 -- Day
+    end
+end)
+
+-- Max Camera Zoom button
+createButton("Max Camera Zoom", function()
+    player.CameraMaxZoomDistance = 1500
+end)
+
+-- ==================== DUPE TAB ====================
+local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StatsService = game:GetService("Stats")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Configuration
+local buttonWidth = 180
+local buttonHeight = 35
+local verticalSpacing = 8
+local startY = 2
+local currentY = startY
+
+-- Helper to create buttons
+local function createButton(text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+    btn.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+    currentY = currentY + buttonHeight + verticalSpacing
+
+    btn.TextSize = 25
+    btn.Font = Enum.Font.Oswald
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    btn.BackgroundTransparency = 0.5
+    btn.Text = text
+    Instance.new("UICorner", btn)
+    btn.Parent = DupePage
+
+    if callback then
+        btn.MouseButton1Click:Connect(callback)
+    end
+    return btn
+end
+
+-- Dupe Timer label
+local dupeTimerLabel = Instance.new("TextLabel")
+dupeTimerLabel.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+dupeTimerLabel.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+currentY = currentY + buttonHeight + verticalSpacing
+dupeTimerLabel.Text = "Dupe Timer: 00:00"
+dupeTimerLabel.TextSize = 25
+dupeTimerLabel.Font = Enum.Font.Oswald
+dupeTimerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+dupeTimerLabel.BackgroundTransparency = 1
+dupeTimerLabel.Parent = DupePage
+
+-- Auto Farm status label (new)
+local autoStatusLabel = Instance.new("TextLabel")
+autoStatusLabel.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+autoStatusLabel.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+currentY = currentY + buttonHeight + verticalSpacing
+autoStatusLabel.Text = "Auto Farm: Off"
+autoStatusLabel.TextSize = 25
+autoStatusLabel.Font = Enum.Font.Oswald
+autoStatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoStatusLabel.BackgroundTransparency = 1
+autoStatusLabel.Parent = DupePage
+
+-- ==================== DUPE LOGIC ====================
+local autoFarm = false
+local dupeAmount = 1
+local isDupeRunning = false
+
+-- Auto Farm toggle button
+createButton("Auto Farm", function()
+    autoFarm = not autoFarm
+    autoStatusLabel.Text = "Auto Farm: " .. (autoFarm and "On" or "Off")
+
+    task.spawn(function()
+        local PING_STOP = 25000
+        local PING_RESUME = 1000
+
+        while autoFarm do
+            while isDupeRunning do task.wait(0.5) end
+
+            -- Safe ping getter
+            local function getPing()
+                local network = StatsService:FindFirstChild("Network")
+                if not network then return 0 end
+                local serverStats = network:FindFirstChild("ServerStatsItem") or network:FindFirstChild("ServerStatsItem_")
+                if not serverStats then return 0 end
+                local pingItem = serverStats:FindFirstChild("Data Ping") or serverStats:FindFirstChild("Data Ping (ms)")
+                if not pingItem then return 0 end
+                local success, ping = pcall(function() return pingItem:GetValue() end)
+                return success and ping or 0
+            end
+
+            local ping = getPing()
+            if ping >= PING_STOP then
+                warn("High ping detected (" .. ping .. " ms). Pausing auto farm...")
+                repeat
+                    task.wait(2)
+                    ping = getPing()
+                until ping <= PING_RESUME
+                print("Ping recovered (" .. ping .. " ms). Resuming auto farm.")
+            end
+
+            -- Equip and activate Double Weight
+            for _, tool in pairs(player.Backpack:GetChildren()) do
+                if tool.Name == "Double Weight" then
+                    tool.Parent = player.Character
+                    pcall(function() tool:Activate() end)
+                end
+            end
+            if player.Character then
+                for _, tool in pairs(player.Character:GetChildren()) do
+                    if tool:IsA("Tool") and tool.Name == "Double Weight" then
+                        pcall(function() tool:Activate() end)
+                    end
+                end
+            end
+
+            task.wait(0.6)
+        end
+    end)
+end)
+
+-- Dupe Amount textbox
+local dupeTextbox = Instance.new("TextBox")
+dupeTextbox.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+dupeTextbox.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+currentY = currentY + buttonHeight + verticalSpacing
+dupeTextbox.Text = ""  -- empty
+dupeTextbox.PlaceholderText = "Dupe 1-800"
+dupeTextbox.ClearTextOnFocus = false
+dupeTextbox.TextSize = 25
+dupeTextbox.Font = Enum.Font.Oswald
+dupeTextbox.TextColor3 = Color3.fromRGB(255, 255, 255)
+dupeTextbox.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+dupeTextbox.BackgroundTransparency = 0.5
+Instance.new("UICorner", dupeTextbox)
+dupeTextbox.Parent = DupePage
+
+dupeTextbox.FocusLost:Connect(function(enterPressed)
+    local n = tonumber(dupeTextbox.Text)
+    if n then dupeAmount = n end
+end)
+
+-- Run dupe function
+local function formatTime(seconds)
+    local m = math.floor(seconds / 60)
+    local s = seconds % 60
+    return string.format("%02d:%02d", m, s)
+end
+
+local function runDupe(amount)
+    isDupeRunning = true
+    for i = amount, 1, -1 do
+        dupeTimerLabel.Text = "Dupe Timer: "..formatTime(i)
+        MarketplaceService:SignalPromptGamePassPurchaseFinished(player, 5949054, true)
+        task.wait(1)
+    end
+    dupeTimerLabel.Text = "Dupe Timer: 00:00"
+    isDupeRunning = false
+end
+
+-- Start Dupe button
+createButton("Start Dupe", function()
+    task.spawn(function()
+        runDupe(dupeAmount)
+    end)
+end)
+
+-- ==================== STATS TAB ====================
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local StatsService = game:GetService("Stats")
+local player = Players.LocalPlayer
+
+-- Configuration
+local labelWidth = 150
+local labelHeight = 25
+local verticalSpacing = 6
+local startXLeft = 10      -- slightly moved left
+local startXRight = 180    -- slightly moved left
+local startY = 10
+local currentY = startY
+
+-- Create label helper
+local function createLabel(text, parent)
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, labelWidth, 0, labelHeight)
+    lbl.Text = text
+    lbl.TextSize = 18
+    lbl.Font = Enum.Font.Oswald
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.BackgroundTransparency = 1
+    lbl.Parent = parent
+    return lbl
+end
+
+-- Container for stats labels
+local statsPage = StatsPage -- make sure this points to your UI frame
+
+-- Define label positions
+local leftColumnLabels = {"Strength", "Gained", "DWS", "SPS", "SPM", "SPH"}
+local rightColumnLabels = {"SPD", "SPW", "SPMO", "SPY", "Ping", "FPS"}
+
+-- Store label objects
+local labels = {}
+
+-- Place left column labels
+currentY = startY
+for _, name in ipairs(leftColumnLabels) do
+    local lbl = createLabel(name..": 0", statsPage)
+    lbl.Position = UDim2.new(0, startXLeft, 0, currentY)
+    labels[name] = lbl
+    currentY = currentY + labelHeight + verticalSpacing
+end
+
+-- Place right column labels
+currentY = startY
+for _, name in ipairs(rightColumnLabels) do
+    local lbl = createLabel(name..": 0", statsPage)
+    lbl.Position = UDim2.new(0, startXRight, 0, currentY)
+    labels[name] = lbl
+    currentY = currentY + labelHeight + verticalSpacing
+end
+
+-- Format numbers helper
+local function formatNumber(n)
+    local str = tostring(n)
+    local k
+    repeat
+        str, k = str:gsub("^(-?%d+)(%d%d%d)", "%1,%2")
+    until k == 0
+    return str
+end
+
+-- Player data
+local playerData = ReplicatedStorage:WaitForChild("Data"):WaitForChild(player.Name)
+local strengthValue = playerData:WaitForChild("Strength")
+local startingStrength = strengthValue.Value
+
+-- Update Strength and Gained instantly
+strengthValue.Changed:Connect(function(newValue)
+    labels["Strength"].Text = "Strength: "..formatNumber(newValue)
+    labels["Gained"].Text = "Gained: "..formatNumber(newValue - startingStrength)
+end)
+
+-- Update per-second stats (DWS, SPS, etc.)
+task.spawn(function()
+    local prevStrength = strengthValue.Value
+    while true do
+        task.wait(1)
+        local current = strengthValue.Value
+        local sps = current - prevStrength
+        prevStrength = current
+
+        -- Count Double Weights
+        local dwCount = 0
+        for _, t in pairs(player.Backpack:GetChildren()) do
+            if t:IsA("Tool") and t.Name == "Double Weight" then dwCount += 1 end
+        end
+        if player.Character then
+            for _, t in pairs(player.Character:GetChildren()) do
+                if t:IsA("Tool") and t.Name == "Double Weight" then dwCount += 1 end
+            end
+        end
+
+        labels["DWS"].Text = "DWS: "..formatNumber(dwCount)
+        labels["SPS"].Text = "SPS: "..formatNumber(sps)
+        labels["SPM"].Text = "SPM: "..formatNumber(sps*60)
+        labels["SPH"].Text = "SPH: "..formatNumber(sps*3600)
+        labels["SPD"].Text = "SPD: "..formatNumber(sps*86400)
+        labels["SPW"].Text = "SPW: "..formatNumber(sps*604800)
+        labels["SPMO"].Text = "SPMO: "..formatNumber(sps*2592000)
+        labels["SPY"].Text = "SPY: "..formatNumber(sps*2592000*12)
+    end
+end)
+
+-- FPS & Ping updates
+task.spawn(function()
+    local frameCount = 0
+    local fps = 0
+
+    RunService.RenderStepped:Connect(function()
+        frameCount += 1
+    end)
+
+    while true do
+        task.wait(1)
+        fps = frameCount
+        frameCount = 0
+        labels["FPS"].Text = "FPS: "..fps
+
+        -- Ping
+        local network = StatsService:FindFirstChild("Network")
+        local serverStats = network and (network:FindFirstChild("ServerStatsItem") or network:FindFirstChild("ServerStatsItem_"))
+        local pingItem = serverStats and (serverStats:FindFirstChild("Data Ping") or serverStats:FindFirstChild("Data Ping (ms)"))
+        local ping = 0
+        if pingItem then
+            local success, value = pcall(function() return pingItem:GetValue() end)
+            if success then ping = value end
+        end
+        labels["Ping"].Text = "Ping: "..math.floor(ping).." ms"  -- round down to nearest integer
+    end
+end)
+
+-- ==================== LOOPING TAB ====================
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local LoopingPage = LoopingPage  -- pre-existing tab frame
+
+-- Config
+local buttonWidth = 180
+local buttonHeight = 35
+local verticalSpacing = 8
+local startY = 2
+local currentY = startY
+
+-- ==================== UI ELEMENTS ====================
+local selectedPlayer = nil
+local loopRunning = false
+local antihitActive = false
+local detectConn, punchConn
+
+-- Loop Status Label
+local loopLabel = Instance.new("TextLabel")
+loopLabel.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+loopLabel.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+loopLabel.Text = "Loop Status: Off"
+loopLabel.TextSize = 25
+loopLabel.Font = Enum.Font.Oswald
+loopLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+loopLabel.BackgroundTransparency = 1
+loopLabel.Parent = LoopingPage
+currentY = currentY + buttonHeight + verticalSpacing
+
+-- Loop Button (Above dropdown)
+local loopButton = Instance.new("TextButton")
+loopButton.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+loopButton.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+loopButton.Text = "Start Loop"
+loopButton.TextSize = 25
+loopButton.Font = Enum.Font.Oswald
+loopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+loopButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+loopButton.BackgroundTransparency = 0.5
+Instance.new("UICorner", loopButton)
+loopButton.Parent = LoopingPage
+currentY = currentY + buttonHeight + verticalSpacing
+
+-- AntiHit Button (Below loop button)
+local antiHitButton = Instance.new("TextButton")
+antiHitButton.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+antiHitButton.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+antiHitButton.Text = "Activate AntiHit"
+antiHitButton.TextSize = 25
+antiHitButton.Font = Enum.Font.Oswald
+antiHitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+antiHitButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+antiHitButton.BackgroundTransparency = 0.5
+Instance.new("UICorner", antiHitButton)
+antiHitButton.Parent = LoopingPage
+currentY = currentY + buttonHeight + verticalSpacing
+
+-- ==================== ENHANCED DROPDOWN ====================
+local dropdownFrame = Instance.new("Frame")
+dropdownFrame.Size = UDim2.new(0, buttonWidth, 0, 200)
+dropdownFrame.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+dropdownFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+dropdownFrame.BackgroundTransparency = 0.5
+dropdownFrame.Visible = false
+Instance.new("UICorner", dropdownFrame)
+dropdownFrame.Parent = LoopingPage
+
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(1, -10, 0, 30)
+searchBox.Position = UDim2.new(0, 5, 0, 5)
+searchBox.PlaceholderText = "Search Player..."
+searchBox.Text = ""
+searchBox.ClearTextOnFocus = false
+searchBox.TextSize = 18
+searchBox.Font = Enum.Font.Oswald
+searchBox.TextColor3 = Color3.fromRGB(255,255,255)
+searchBox.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Instance.new("UICorner", searchBox)
+searchBox.Parent = dropdownFrame
+
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(1, 0, 1, -40)
+scrollFrame.Position = UDim2.new(0,0,0,35)
+scrollFrame.CanvasSize = UDim2.new(0,0,0,0)
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.Parent = dropdownFrame
+
+local dropdownButton = Instance.new("TextButton")
+dropdownButton.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+dropdownButton.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+dropdownButton.Text = "Select Player"
+dropdownButton.TextSize = 25
+dropdownButton.Font = Enum.Font.Oswald
+dropdownButton.TextColor3 = Color3.fromRGB(255,255,255)
+dropdownButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+dropdownButton.BackgroundTransparency = 0.5
+Instance.new("UICorner", dropdownButton)
+dropdownButton.Parent = LoopingPage
+currentY = currentY + buttonHeight + verticalSpacing
+
+dropdownButton.MouseButton1Click:Connect(function()
+    dropdownFrame.Visible = not dropdownFrame.Visible
+end)
+
+local function createPlayerButton(plr, yPos)
+    local plrButton = Instance.new("TextButton")
+    plrButton.Size = UDim2.new(1,0,0,30)
+    plrButton.Position = UDim2.new(0,0,0,yPos)
+    plrButton.Text = plr.DisplayName.." ("..plr.Name..")"
+    plrButton.TextSize = 18
+    plrButton.Font = Enum.Font.Oswald
+    plrButton.TextColor3 = Color3.fromRGB(255,255,255)
+    plrButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    plrButton.BackgroundTransparency = 0.5
+    Instance.new("UICorner", plrButton)
+    plrButton.Parent = scrollFrame
+
+    plrButton.MouseEnter:Connect(function()
+        plrButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    end)
+    plrButton.MouseLeave:Connect(function()
+        plrButton.BackgroundColor3 = (selectedPlayer == plr.Name) and Color3.fromRGB(0,100,200) or Color3.fromRGB(0,0,0)
+    end)
+
+    plrButton.MouseButton1Click:Connect(function()
+        selectedPlayer = plr.Name
+        dropdownButton.Text = plr.DisplayName.." ("..plr.Name..")"
+        dropdownFrame.Visible = false
+        updateDropdownButtons()
+    end)
+
+    return plrButton
+end
+
+local function updateDropdownButtons()
+    scrollFrame:ClearAllChildren()
+    local yPos = 0
+    local searchText = searchBox.Text:lower()
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr.Name:lower():find(searchText) or plr.DisplayName:lower():find(searchText) then
+            local btn = createPlayerButton(plr, yPos)
+            if selectedPlayer == plr.Name then
+                btn.BackgroundColor3 = Color3.fromRGB(0,100,200) -- highlight selected
+            end
+            yPos = yPos + 30
+        end
+    end
+    scrollFrame.CanvasSize = UDim2.new(0,0,0,yPos)
+end
+
+searchBox:GetPropertyChangedSignal("Text"):Connect(updateDropdownButtons)
+Players.PlayerAdded:Connect(updateDropdownButtons)
+Players.PlayerRemoving:Connect(updateDropdownButtons)
+updateDropdownButtons()
+
+-- ==================== LOOP BUTTON LOGIC ====================
+loopButton.MouseButton1Click:Connect(function()
+    if not selectedPlayer then
+        warn("No player selected!")
+        return
+    end
+
+    loopRunning = not loopRunning
+    loopButton.Text = loopRunning and "Stop Loop" or "Start Loop"
+    loopLabel.Text = loopRunning and "Loop Status: Running" or "Loop Status: Off"
+
+    if loopRunning then
+        local LocalUser = Players.LocalPlayer
+        local ENEMY = selectedPlayer
+
+        task.spawn(function()
+            while loopRunning do
+                for i = 1, 2000 do 
+                    if not loopRunning then break end
+                    ReplicatedStorage.Remotes.Human_Punch:FireServer(
+                        LocalUser.Character.LeftHand, "LeftPunch",
+                        Workspace[ENEMY].LeftHand, 5, true, "RightPunch",
+                        LocalUser.Character.Boxing.Handle.Hit, 100
+                    )
+                    task.wait()
+                end
+                task.wait()
+            end
+        end)
+    end
+end)
+
+-- ==================== ANTIHIT BUTTON LOGIC ====================
+antiHitButton.MouseButton1Click:Connect(function()
+    if antihitActive then return end
+    antihitActive = true
+
+    detectConn = RunService.RenderStepped:Connect(function()
+        pcall(function()
+            local plr = Players.LocalPlayer
+            local char = plr and plr.Character
+            if char and char:FindFirstChild("Humanoid") and char.Humanoid:FindFirstChild("creator") then
+                local attacker = tostring(char.Humanoid.creator.Value)
+                loopLabel:Set(attacker .. " Is Hitting You")
+            else
+                loopLabel:Set("")
+            end
+        end)
+    end)
+
+    punchConn = RunService.RenderStepped:Connect(function()
+        pcall(function()
+            local plr = Players.LocalPlayer
+            local char = plr and plr.Character
+            if char and char:FindFirstChild("Humanoid") and char.Humanoid:FindFirstChild("creator") then
+                local attackerName = tostring(char.Humanoid.creator.Value)
+                local target = Workspace:FindFirstChild(attackerName)
+                if target and plr and plr.Backpack and plr.Backpack:FindFirstChild("Boxing") and plr.Backpack.Boxing:FindFirstChild("Handle") then
+                    local hit = plr.Backpack.Boxing.Handle.Hit
+                    ReplicatedStorage.Remotes.Human_Punch:FireServer(
+                        char.RightHand, "RightPunch",
+                        target:FindFirstChild("UpperTorso") or target:FindFirstChild("HumanoidRootPart"),
+                        5, true, "RightPunch", hit, 5
+                    )
+                    ReplicatedStorage.Remotes.Human_Punch:FireServer(
+                        char.LeftHand, "LeftPunch",
+                        target:FindFirstChild("UpperTorso") or target:FindFirstChild("HumanoidRootPart"),
+                        5, true, "LeftPunch", hit, 5
+                    )
+                end
+            end
+        end)
+    end)
+end)
+
+-- ==================== TELEPORTS TAB ====================
+local TeleportsPage = TeleportsPage -- pre-existing tab frame
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Config
+local buttonWidth = 180
+local buttonHeight = 35
+local verticalSpacing = 8
+local startY = 2
+local currentY = startY
+
+-- Helper to create teleport buttons
+local function createTeleportButton(name, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+    btn.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+    currentY = currentY + buttonHeight + verticalSpacing
+
+    btn.Text = name
+    btn.TextSize = 25
+    btn.Font = Enum.Font.Oswald
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    btn.BackgroundTransparency = 0.5
+    Instance.new("UICorner", btn)
+    btn.Parent = TeleportsPage
+
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- TP Safezone
+createTeleportButton("TP Safezone", function()
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.CFrame = CFrame.new(-1938, 446, -5296)
+    end
+end)
+
+-- TP High AF
+createTeleportButton("TP High AF", function()
+    local character = player.Character or player.CharacterAdded:Wait()
+    local hrp = character:WaitForChild("HumanoidRootPart")
+
+    -- Create invisible platform 15,000 studs above the character
+    local platform = Instance.new("Part")
+    platform.Size = Vector3.new(1000, 1, 100)
+    platform.Anchored = true
+    platform.Transparency = 1 -- invisible
+    platform.CanCollide = true
+    platform.Position = hrp.Position + Vector3.new(0, 15000, 0)
+    platform.Name = "DontDeleteMe"
+    platform.Parent = workspace
+
+    -- Teleport player 10 studs above the platform
+    hrp.CFrame = platform.CFrame + Vector3.new(0, 10, 0)
+end)
