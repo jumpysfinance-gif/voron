@@ -608,7 +608,6 @@ task.spawn(function()
         labels["Ping"].Text = "Ping: "..math.floor(ping).." ms"
     end
 end)
-
 -- ==================== LOOPING TAB ====================
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
@@ -910,7 +909,7 @@ createTeleportButton("TP High AF", function()
     local platform = Instance.new("Part")
     platform.Size = Vector3.new(1000, 1, 100)
     platform.Anchored = true
-    platform.Transparency = 1 -- invisible
+    platform.Transparency = 1
     platform.CanCollide = true
     platform.Position = hrp.Position + Vector3.new(0, 15000, 0)
     platform.Name = "DontDeleteMe"
@@ -919,3 +918,131 @@ createTeleportButton("TP High AF", function()
     -- Teleport player 10 studs above the platform
     hrp.CFrame = platform.CFrame + Vector3.new(0, 10, 0)
 end)
+
+-- ==================== TP TO PLAYER ====================
+local selectedPlayer = nil
+
+-- TP to Player button
+local tpPlayerButton = createTeleportButton("TP to Player", function()
+    if selectedPlayer then
+        local target = Players:FindFirstChild(selectedPlayer)
+        local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        if hrp and target and target.Character then
+            local targetHRP = target.Character:FindFirstChild("HumanoidRootPart")
+            if targetHRP then
+                hrp.CFrame = targetHRP.CFrame + Vector3.new(0, 5, 0)
+            end
+        end
+    else
+        warn("No player selected!")
+    end
+end)
+
+-- Dropdown frame
+local dropdownFrame = Instance.new("Frame")
+dropdownFrame.Size = UDim2.new(0, buttonWidth, 0, 200)
+dropdownFrame.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+dropdownFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+dropdownFrame.BackgroundTransparency = 0.5
+dropdownFrame.Visible = false
+Instance.new("UICorner", dropdownFrame)
+dropdownFrame.Parent = TeleportsPage
+
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(1, -10, 0, 30)
+searchBox.Position = UDim2.new(0, 5, 0, 5)
+searchBox.PlaceholderText = "Search Player..."
+searchBox.Text = ""
+searchBox.ClearTextOnFocus = false
+searchBox.TextSize = 18
+searchBox.Font = Enum.Font.Oswald
+searchBox.TextColor3 = Color3.fromRGB(255,255,255)
+searchBox.BackgroundColor3 = Color3.fromRGB(30,30,30)
+Instance.new("UICorner", searchBox)
+searchBox.Parent = dropdownFrame
+
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(1, 0, 1, -40)
+scrollFrame.Position = UDim2.new(0,0,0,35)
+scrollFrame.CanvasSize = UDim2.new(0,0,0,0)
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.Parent = dropdownFrame
+
+-- Dropdown toggle button
+local dropdownButton = Instance.new("TextButton")
+dropdownButton.Size = UDim2.new(0, buttonWidth, 0, buttonHeight)
+dropdownButton.Position = UDim2.new(0.5, -buttonWidth/2, 0, currentY)
+dropdownButton.Text = "Select Player"
+dropdownButton.TextSize = 25
+dropdownButton.Font = Enum.Font.Oswald
+dropdownButton.TextColor3 = Color3.fromRGB(255,255,255)
+dropdownButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+dropdownButton.BackgroundTransparency = 0.5
+Instance.new("UICorner", dropdownButton)
+dropdownButton.Parent = TeleportsPage
+currentY = currentY + buttonHeight + verticalSpacing
+
+dropdownButton.MouseButton1Click:Connect(function()
+    dropdownFrame.Visible = not dropdownFrame.Visible
+end)
+
+-- Create a player button in the dropdown
+local function createPlayerButton(plr, yPos)
+    local plrButton = Instance.new("TextButton")
+    plrButton.Size = UDim2.new(1,0,0,30)
+    plrButton.Position = UDim2.new(0,0,0,yPos)
+    plrButton.Text = plr.DisplayName.." ("..plr.Name..")"
+    plrButton.TextSize = 18
+    plrButton.Font = Enum.Font.Oswald
+    plrButton.TextColor3 = Color3.fromRGB(255,255,255)
+    plrButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
+    plrButton.BackgroundTransparency = 0.5
+    Instance.new("UICorner", plrButton)
+    plrButton.Parent = scrollFrame
+
+    plrButton.MouseEnter:Connect(function()
+        plrButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
+    end)
+
+    plrButton.MouseLeave:Connect(function()
+        plrButton.BackgroundColor3 =
+            (selectedPlayer == plr.Name)
+            and Color3.fromRGB(0,100,200)
+            or Color3.fromRGB(0,0,0)
+    end)
+
+    plrButton.MouseButton1Click:Connect(function()
+        selectedPlayer = plr.Name
+        dropdownButton.Text = plr.DisplayName.." ("..plr.Name..")"
+        dropdownFrame.Visible = false
+        updateDropdownButtons()
+    end)
+
+    return plrButton
+end
+
+-- Update dropdown buttons
+function updateDropdownButtons()
+    scrollFrame:ClearAllChildren()
+    local yPos = 0
+    local searchText = searchBox.Text:lower()
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr.Name:lower():find(searchText)
+        or plr.DisplayName:lower():find(searchText) then
+            local btn = createPlayerButton(plr, yPos)
+            if selectedPlayer == plr.Name then
+                btn.BackgroundColor3 = Color3.fromRGB(0,100,200)
+            end
+            yPos = yPos + 30
+        end
+    end
+
+    scrollFrame.CanvasSize = UDim2.new(0,0,0,yPos)
+end
+
+searchBox:GetPropertyChangedSignal("Text"):Connect(updateDropdownButtons)
+Players.PlayerAdded:Connect(updateDropdownButtons)
+Players.PlayerRemoving:Connect(updateDropdownButtons)
+updateDropdownButtons()
